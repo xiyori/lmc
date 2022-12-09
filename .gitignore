@@ -1,0 +1,8 @@
+.idea
+*.iml
+.ipynb_checkpoints
+checkpoints
+/data
+/lock
+/output
+__*__
