@@ -83,3 +83,6 @@ class MNISTDataloader:
                 excerpt = slice(start_idx, start_idx + self.batchsize)
             yield (torch.from_numpy(self.inputs[excerpt].astype(np.float32)),
                    torch.from_numpy(self.targets[excerpt].astype(np.int64)))
+    
+    def __len__(self):
+        return len(self.inputs) // self.batchsize
