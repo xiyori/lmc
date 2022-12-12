@@ -7,13 +7,13 @@ from torch import Tensor
 class Tracker(nn.Module):
     def __init__(self, key: str, operator: nn.Module,
                  non_linearity: nn.Module = nn.Identity(),
-                 disabled: bool = False):
+                 enabled: bool = True):
         super().__init__()
         self.key = key
         self.operator = operator
         self.non_linearity = non_linearity
         self.tracking = False
-        self.disabled = disabled
+        self.enabled = enabled
         self.reset_statistics()
 
     def reset_statistics(self):
@@ -24,7 +24,7 @@ class Tracker(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         x = self.non_linearity(self.operator(x))
-        if self.tracking and not self.disabled:
+        if self.tracking and self.enabled:
             # Move batch dimension to end and reshape BxCx... -> NxC
             activation = torch.movedim(x.detach().cpu(), 1, -1).reshape(-1, x.shape[1])
             self.activations.append(activation)
@@ -42,3 +42,11 @@ class Tracker(nn.Module):
     def mean_squared(self) -> Tensor:
         return self._mean_squared / (self.num_runs
                                      if self.num_runs > 0 else 1)
+
+    @property
+    def var(self) -> Tensor:
+        return (self.num_runs / (self.num_runs - 1) * (self.mean_squared - self.mean ** 2))
+
+    @property
+    def std(self) -> Tensor:
+        return torch.sqrt(self.var)
