@@ -1,6 +1,6 @@
 from torch import nn
 
-from .activation_tracker import Tracker
+from .tracker import Tracker
 
 
 class TrackedModel(nn.Module):
@@ -40,6 +40,14 @@ class TrackedModel(nn.Module):
 
     def track(self):
         return TrackingContextManager(self)
+
+    def requires_grad(self, requires_grad: bool = True):
+        if requires_grad:
+            for param in self.parameters():
+                param.requires_grad = True
+        else:
+            for param in self.parameters():
+                param.requires_grad = False
 
 
 class TrackingContextManager:

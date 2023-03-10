@@ -5,7 +5,7 @@
 from torch import nn
 from torchvision import transforms
 
-from .tracked_model import Tracker, TrackedModel
+from ..modules import Tracker, TrackedModel
 from ..permutation_specs import PermutationSpec, permutation_spec_from_axes_to_perm
 
 
