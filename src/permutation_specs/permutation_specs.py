@@ -7,6 +7,7 @@ import torch
 from torch import Tensor
 from typing import NamedTuple, Dict, Sequence
 from collections import defaultdict
+from copy import deepcopy
 
 from ..modules import TrackedModel
 
@@ -44,16 +45,21 @@ def get_permuted_param(model: TrackedModel, permutation_spec: PermutationSpec,
             weight = torch.index_select(weight, axis, permutations[p])
         else:
             weight = torch.movedim(
-                torch.movedim(weight, axis, -1) @ permutations[p],
+                torch.movedim(weight, axis, -1) @ permutations[p].T,
                 -1, axis
             )
     return weight
 
 
-def apply_permutation(model: TrackedModel, output, permutation_spec: PermutationSpec,
-                      permutations: Sequence):
+def apply_permutation(model: TrackedModel, permutation_spec: PermutationSpec,
+                      permutations: Sequence, copy: bool = False) -> TrackedModel:
+    if copy:
+        output = deepcopy(model)
+    else:
+        output = model
     for key in permutation_spec.axes2perm:
         output[key].copy_(get_permuted_param(model, permutation_spec, permutations, key))
+    return output
 
 
 def apply_permutation_stats(model: TrackedModel, permutation_spec: PermutationSpec,

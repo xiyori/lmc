@@ -6,7 +6,6 @@ import torch
 
 from torch import nn, Tensor
 from scipy.optimize import linear_sum_assignment
-from copy import deepcopy
 from typing import Sequence
 
 from ..modules import TrackedModel, Sinkhorn
@@ -27,7 +26,7 @@ class SinkhornRebasinModel(nn.Module):
 
     def forward(self, model: TrackedModel) -> TrackedModel:
         if self.training:
-            double_stochastic = [
+            permutations = [
                 Sinkhorn.apply(
                     -p,
                     torch.ones(p.shape[0]).to(p.device),
@@ -36,9 +35,8 @@ class SinkhornRebasinModel(nn.Module):
                     self.tau
                 ) for p in self.permutations]
         else:
-            double_stochastic = self.estimate_permutations()
-        output = deepcopy(model)
-        apply_permutation(model, output, self.permutation_spec, double_stochastic)
+            permutations = self.estimate_permutations()
+        output = apply_permutation(model, self.permutation_spec, permutations, copy=True)
         return output
 
     def estimate_permutations(self) -> Sequence[Tensor]:
@@ -46,5 +44,4 @@ class SinkhornRebasinModel(nn.Module):
             torch.tensor(
                 linear_sum_assignment(p.cpu().detach().numpy(), maximize=True)[1],
                 dtype=torch.long, device=p.device
-            ) for p in self.permutations
-        ]
+            ) for p in self.permutations]

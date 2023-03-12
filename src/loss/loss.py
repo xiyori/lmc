@@ -12,8 +12,8 @@ class DistLoss(nn.Module):
         loss = 0
         num_params = 0
         for p0, p1 in zip(model0.parameters(), model1.parameters()):
-            num_params += p0.numel()
-            loss += (p0 - p1).abs().sum()
+            num_params += 1
+            loss += (p0 - p1).abs().mean()
         loss /= num_params
         return loss
 
