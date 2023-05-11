@@ -1,1 +1,1 @@
-from .loss import DistLoss, MidLoss, RndLoss
+from .dist import DistLoss

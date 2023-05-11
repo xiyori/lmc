@@ -1,31 +1,31 @@
 from torch import nn
 
-from ..modules import Tracker, TrackedModel
+from ..modules import Indexer, IndexedModel
 from ..permutation_specs import PermutationSpec, permutation_spec_from_axes_to_perm
 
 
-class MLPModel(TrackedModel):
+class MLPModel(IndexedModel):
     def __init__(self, config):
         super().__init__()
         self.config = config
         self.features = nn.Sequential(
-            Tracker(
+            Indexer(
                 "Dense_0",
                 nn.Linear(config.input_size, config.hidden_size),
                 nn.ReLU(inplace=True),
                 mode=config.matching_mode
             ),
-            *[Tracker(
+            *[Indexer(
                 f"Dense_{i}",
                 nn.Linear(config.hidden_size, config.hidden_size),
                 nn.ReLU(inplace=True),
                 mode=config.matching_mode
             ) for i in range(1, config.num_layers - 1)],
-            Tracker(
+            Indexer(
                 f"Dense_{config.num_layers - 1}",
                 nn.Linear(config.hidden_size, config.output_size),
                 mode=config.matching_mode,
-                enabled=False
+                track_activations=False
             )
         )
 

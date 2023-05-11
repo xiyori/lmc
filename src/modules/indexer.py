@@ -3,17 +3,20 @@ import torch
 from torch import nn, Tensor
 
 
-class Tracker(nn.Module):
+class Indexer(nn.Module):
     def __init__(self, key: str, operator: nn.Module,
                  non_linearity: nn.Module = nn.Identity(),
-                 mode: str = "pre_activation", enabled: bool = True):
+                 mode: str = "post_activation",
+                 track_activations: bool = True,
+                 match_weights: bool = True):
         super().__init__()
         self.key = key
         self.operator = operator
         self.non_linearity = non_linearity
         self.tracking = False
         self.mode = mode
-        self.enabled = enabled
+        self.track_activations = track_activations
+        self.match_weights = match_weights
         self.reset_statistics()
 
     def reset_statistics(self):
@@ -26,7 +29,7 @@ class Tracker(nn.Module):
         x = self.operator(x)
         if self.mode == "post_activation":
             x = self.non_linearity(x)
-        if self.tracking and self.enabled:
+        if self.track_activations and self.tracking:
             # Move batch dimension to end and reshape BxCx... -> NxC
             activation = torch.movedim(x.detach().cpu(), 1, -1).reshape(-1, x.shape[1])
             self.activations.append(activation)

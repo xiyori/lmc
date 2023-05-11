@@ -5,21 +5,21 @@
 from torch import nn
 from torchvision import transforms
 
-from ..modules import Tracker, TrackedModel
+from ..modules import Indexer, IndexedModel
 from ..permutation_specs import PermutationSpec, permutation_spec_from_axes_to_perm
 
 
 def block(config, input, output, layer):
     # Layer i
     list = [
-        Tracker(
+        Indexer(
             f"Conv_{layer}",
             nn.Conv2d(input, output, kernel_size=3,
                       stride=1, padding=1, bias=True),
             mode=config.matching_mode,
-            enabled=False
+            track_activations=False
         ),
-        Tracker(
+        Indexer(
             f"BatchNorm_{layer}",
             nn.BatchNorm2d(output),
             nn.ReLU(),
@@ -35,7 +35,7 @@ class Flatten(nn.Module):
         return x.view(x.size(0), x.size(1))
 
 
-class ConvNetDepth(TrackedModel):
+class ConvNetDepth(IndexedModel):
     def __init__(self, config):
         super().__init__()
         self.config = config
@@ -83,11 +83,11 @@ class ConvNetDepth(TrackedModel):
         linear_layer = [
             nn.MaxPool2d(4 * pooling_increaser),
             Flatten(),
-            Tracker(
+            Indexer(
                 "Dense",
                 nn.Linear(current_width, config.num_classes, bias=True),
                 mode=config.matching_mode,
-                enabled=False
+                track_activations=False
             )
         ]
 
@@ -136,10 +136,10 @@ def convnet_permutation_spec(config) -> PermutationSpec:
             for i in range(1, num_layers)},
         **{f"Conv_{i}.bias": (i, )
             for i in range(num_layers)},
-        **{f"BatchNorm_{i}.running_mean": (i, )
-            for i in range(num_layers)},
-        **{f"BatchNorm_{i}.running_var": (i, )
-            for i in range(num_layers)},
+        # **{f"BatchNorm_{i}.running_mean": (i, )
+        #     for i in range(num_layers)},
+        # **{f"BatchNorm_{i}.running_var": (i, )
+        #     for i in range(num_layers)},
         **{f"BatchNorm_{i}.weight": (i, )
             for i in range(num_layers)},
         **{f"BatchNorm_{i}.bias": (i, )

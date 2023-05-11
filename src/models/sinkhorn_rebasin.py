@@ -8,23 +8,27 @@ from torch import nn, Tensor
 from scipy.optimize import linear_sum_assignment
 from typing import Sequence
 
-from ..modules import TrackedModel, Sinkhorn
+from ..modules import IndexedModel, Sinkhorn
 from ..permutation_specs import PermutationSpec, apply_permutation
 
 
 class SinkhornRebasinModel(nn.Module):
     def __init__(self, permutation_spec: PermutationSpec,
                  perm_sizes: Sequence[int],
-                 n_iter: int = 20, tau: float = 1.0):
+                 n_iter: int = 20, tau: float = 1.0,
+                 init: str = "identity"):
         super().__init__()
         self.permutation_spec = permutation_spec
         self.n_iter = n_iter
         self.tau = tau
         self.permutations = nn.ParameterList(
-            [nn.Parameter(torch.eye(size)) for size in perm_sizes]
+            [nn.Parameter(torch.eye(size) +
+                          (torch.randn(size, size) * 0.1
+                           if init == "random"
+                           else 0)) for size in perm_sizes]
         )
 
-    def forward(self, model: TrackedModel) -> TrackedModel:
+    def forward(self, model: IndexedModel, out: IndexedModel) -> IndexedModel:
         if self.training:
             permutations = [
                 Sinkhorn.apply(
@@ -36,8 +40,8 @@ class SinkhornRebasinModel(nn.Module):
                 ) for p in self.permutations]
         else:
             permutations = self.estimate_permutations()
-        output = apply_permutation(model, self.permutation_spec, permutations, copy=True)
-        return output
+        apply_permutation(model, self.permutation_spec, permutations, out)
+        return out
 
     def estimate_permutations(self) -> Sequence[Tensor]:
         return [

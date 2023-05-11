@@ -1,3 +1,3 @@
 from .sinkhorn import Sinkhorn
-from .tracker import Tracker
-from .tracked_model import TrackedModel
+from .indexer import Indexer
+from .indexed_model import IndexedModel

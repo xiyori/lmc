@@ -4,12 +4,11 @@
 
 import torch
 
-from torch import Tensor
-from typing import NamedTuple, Dict, Sequence
+from torch import nn, Tensor
 from collections import defaultdict
-from copy import deepcopy
+from typing import NamedTuple, Dict, Sequence, Optional
 
-from ..modules import TrackedModel
+from ..modules import IndexedModel
 
 
 class PermutationSpec(NamedTuple):
@@ -35,7 +34,7 @@ def permutation_spec_from_axes_to_perm(axes2perm: dict) -> PermutationSpec:
     return PermutationSpec(perm2axes=to_list(dict(perm2axes)), axes2perm=axes2perm)
 
 
-def get_permuted_param(model: TrackedModel, permutation_spec: PermutationSpec,
+def get_permuted_param(model: IndexedModel, permutation_spec: PermutationSpec,
                        permutations: Sequence, key: str, except_axis: int = None) -> Tensor:
     weight = model[key].detach()
     for axis, p in enumerate(permutation_spec.axes2perm[key]):
@@ -51,18 +50,17 @@ def get_permuted_param(model: TrackedModel, permutation_spec: PermutationSpec,
     return weight
 
 
-def apply_permutation(model: TrackedModel, permutation_spec: PermutationSpec,
-                      permutations: Sequence, copy: bool = False) -> TrackedModel:
-    if copy:
-        output = deepcopy(model)
-    else:
-        output = model
+def apply_permutation(model: IndexedModel, permutation_spec: PermutationSpec,
+                      permutations: Sequence, out: Optional[IndexedModel] = None):
+    if out is None:
+        out = model
+
     for key in permutation_spec.axes2perm:
-        output[key].copy_(get_permuted_param(model, permutation_spec, permutations, key))
-    return output
+        # out[key].requires_grad = False
+        out[key].copy_(get_permuted_param(model, permutation_spec, permutations, key))
 
 
-def apply_permutation_stats(model: TrackedModel, permutation_spec: PermutationSpec,
+def apply_permutation_stats(model: IndexedModel, permutation_spec: PermutationSpec,
                             permutations: Sequence):
     permuted = set()
     for key, axis_perms in permutation_spec.axes2perm.items():

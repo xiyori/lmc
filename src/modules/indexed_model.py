@@ -1,41 +1,48 @@
 from torch import nn
 
-from .tracker import Tracker
+from .indexer import Indexer
 
 
-class TrackedModel(nn.Module):
+class IndexedModel(nn.Module):
     def __init__(self):
         super().__init__()
-        self.trackers = dict()
+        self.modules = dict()
 
     def init(self):
-        self.collect_trackers(self)
+        self.collect_modules(self)
 
     def __getitem__(self, key: str):
         if "." in key:
             key, attribute = key.split(".")
-            return getattr(self.trackers[key].operator, attribute)
-        return self.trackers[key]
+            return getattr(self.modules[key].operator, attribute)
+        return self.modules[key]
+
+    # def __setitem__(self, key: str, value):
+    #     if "." in key:
+    #         key, attribute = key.split(".")
+    #         setattr(self.modules[key].operator, attribute, value)
+    #     else:
+    #         raise NotImplementedError("setting modules not implemented")
 
     def __len__(self):
-        return len(self.trackers)
+        return len(self.modules)
 
-    def collect_trackers(self, module: nn.Module):
+    def collect_modules(self, module: nn.Module):
         for _, submodule in module.named_children():
-            if isinstance(submodule, Tracker):
-                self.trackers[submodule.key] = submodule
-            self.collect_trackers(submodule)
+            if isinstance(submodule, Indexer):
+                self.modules[submodule.key] = submodule
+            self.collect_modules(submodule)
 
     def start_tracking(self):
-        for tracker in self.trackers.values():
+        for tracker in self.modules.values():
             tracker.tracking = True
 
     def stop_tracking(self):
-        for tracker in self.trackers.values():
+        for tracker in self.modules.values():
             tracker.tracking = False
 
     def reset_statistics(self):
-        for tracker in self.trackers.values():
+        for tracker in self.modules.values():
             tracker.reset_statistics()
 
     def track(self):
@@ -51,7 +58,7 @@ class TrackedModel(nn.Module):
 
 
 class TrackingContextManager:
-    def __init__(self, model: TrackedModel):
+    def __init__(self, model: IndexedModel):
         self.model = model
 
     def __enter__(self):
