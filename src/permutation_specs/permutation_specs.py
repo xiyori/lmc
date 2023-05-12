@@ -52,11 +52,14 @@ def get_permuted_param(model: IndexedModel, permutation_spec: PermutationSpec,
 
 def apply_permutation(model: IndexedModel, permutation_spec: PermutationSpec,
                       permutations: Sequence, out: Optional[IndexedModel] = None):
+    remove_requires_grad = False
     if out is None:
         out = model
+        remove_requires_grad = True
 
     for key in permutation_spec.axes2perm:
-        # out[key].requires_grad = False
+        if remove_requires_grad:
+            out[key].requires_grad = False
         out[key].copy_(get_permuted_param(model, permutation_spec, permutations, key))
 
 
