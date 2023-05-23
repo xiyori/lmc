@@ -1,9 +1,10 @@
 from torch import nn
+from abc import ABC, abstractmethod
 
 from .indexer import Indexer
 
 
-class IndexedModel(nn.Module):
+class IndexedModel(nn.Module, ABC):
     def __init__(self):
         super().__init__()
         self.modules = dict()
@@ -55,6 +56,10 @@ class IndexedModel(nn.Module):
         else:
             for param in self.parameters():
                 param.requires_grad = False
+
+    @abstractmethod
+    def copy(self):
+        pass
 
 
 class TrackingContextManager:

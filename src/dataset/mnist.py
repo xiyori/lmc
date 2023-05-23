@@ -3,8 +3,10 @@ import sys
 import torch
 import numpy as np
 
+import torch.nn.functional as F
 
-def load_mnist(root, flatten=False, valid_size=5000):
+
+def load_mnist(root, flatten = False, valid_size = 5000, image_size = 28, normalize = True):
     """taken from https://github.com/Lasagne/Lasagne/blob/master/examples/mnist.py"""
     # We first define a download function, supporting both Python 2 and 3.
     if sys.version_info[0] == 2:
@@ -12,7 +14,7 @@ def load_mnist(root, flatten=False, valid_size=5000):
     else:
         from urllib.request import urlretrieve
 
-    def download(filename, source='http://yann.lecun.com/exdb/mnist/'):
+    def download(filename, source = 'http://yann.lecun.com/exdb/mnist/'):
         print("Downloading %s" % filename)
         urlretrieve(source + filename, os.path.join(root, filename))
 
@@ -34,6 +36,12 @@ def load_mnist(root, flatten=False, valid_size=5000):
         # The inputs come as bytes, we convert them to float32 in range [0,1].
         # (Actually to range [0, 255/256], for compatibility to the version
         # provided at http://deeplearning.net/data/mnist/mnist.pkl.gz.)
+        if image_size != 28:
+            data = F.interpolate(torch.from_numpy(data.astype(np.float32)),
+                                 (image_size, image_size),
+                                 mode="bilinear").numpy()
+        if normalize:
+            return data.astype(np.float32) * 2 / 255 - 1
         return data / np.float32(256)
 
     def load_mnist_labels(filename):
@@ -52,12 +60,16 @@ def load_mnist(root, flatten=False, valid_size=5000):
     y_test = load_mnist_labels('t10k-labels-idx1-ubyte.gz')
 
     # We reserve the last 5000 training examples for validation.
-    X_train, X_val = X_train[:-valid_size], X_train[-valid_size:]
-    y_train, y_val = y_train[:-valid_size], y_train[-valid_size:]
+    if valid_size == 0:
+        X_val, y_val = np.empty((0, 1, image_size, image_size)), np.empty(0)
+    else:
+        X_train, X_val = X_train[:-valid_size], X_train[-valid_size:]
+        y_train, y_val = y_train[:-valid_size], y_train[-valid_size:]
 
     if flatten:
         X_train = X_train.reshape([X_train.shape[0], -1])
-        X_val = X_val.reshape([X_val.shape[0], -1])
+        if valid_size > 0:
+            X_val = X_val.reshape([X_val.shape[0], -1])
         X_test = X_test.reshape([X_test.shape[0], -1])
 
     # We just return all the arrays in order, as expected in main().
@@ -66,7 +78,7 @@ def load_mnist(root, flatten=False, valid_size=5000):
 
 
 class MNISTDataloader:
-    def __init__(self, inputs, targets, batchsize, shuffle=False):
+    def __init__(self, inputs, targets, batchsize, shuffle = False):
         assert len(inputs) == len(targets)
         self.inputs = inputs
         self.targets = targets
@@ -83,6 +95,6 @@ class MNISTDataloader:
                 excerpt = slice(start_idx, start_idx + self.batchsize)
             yield (torch.from_numpy(self.inputs[excerpt].astype(np.float32)),
                    torch.from_numpy(self.targets[excerpt].astype(np.int64)))
-    
+
     def __len__(self):
         return len(self.inputs) // self.batchsize

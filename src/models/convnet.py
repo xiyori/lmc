@@ -15,7 +15,7 @@ def block(config, input, output, layer):
         Indexer(
             f"Conv_{layer}",
             nn.Conv2d(input, output, kernel_size=3,
-                      stride=1, padding=1, bias=True),
+                      stride=1, padding=1, bias=False),
             mode=config.matching_mode,
             track_activations=False
         ),
@@ -101,7 +101,7 @@ class ConvNetDepth(IndexedModel):
         return self.module_list(x)
 
     def copy(self):
-        return ConvNetDepth(self.config)
+        return ConvNetDepth(self.config).to(self["Dense.weight"].device)
 
 
 class ConvNet:
@@ -134,12 +134,12 @@ def convnet_permutation_spec(config) -> PermutationSpec:
         "Conv_0.weight": (0, None, None, None),
         **{f"Conv_{i}.weight": (i, i - 1, None, None)
             for i in range(1, num_layers)},
-        **{f"Conv_{i}.bias": (i, )
+        # **{f"Conv_{i}.bias": (i, )
+        #     for i in range(num_layers)},
+        **{f"BatchNorm_{i}.running_mean": (i, )
             for i in range(num_layers)},
-        # **{f"BatchNorm_{i}.running_mean": (i, )
-        #     for i in range(num_layers)},
-        # **{f"BatchNorm_{i}.running_var": (i, )
-        #     for i in range(num_layers)},
+        **{f"BatchNorm_{i}.running_var": (i, )
+            for i in range(num_layers)},
         **{f"BatchNorm_{i}.weight": (i, )
             for i in range(num_layers)},
         **{f"BatchNorm_{i}.bias": (i, )

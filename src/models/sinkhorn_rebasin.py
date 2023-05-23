@@ -28,7 +28,7 @@ class SinkhornRebasinModel(nn.Module):
                            else 0)) for size in perm_sizes]
         )
 
-    def forward(self, model: IndexedModel, out: IndexedModel) -> IndexedModel:
+    def forward(self, model: IndexedModel) -> IndexedModel:
         if self.training:
             permutations = [
                 Sinkhorn.apply(
@@ -40,8 +40,7 @@ class SinkhornRebasinModel(nn.Module):
                 ) for p in self.permutations]
         else:
             permutations = self.estimate_permutations()
-        apply_permutation(model, self.permutation_spec, permutations, out)
-        return out
+        return apply_permutation(model, self.permutation_spec, permutations, copy=True)
 
     def estimate_permutations(self) -> Sequence[Tensor]:
         return [

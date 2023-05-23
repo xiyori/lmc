@@ -5,8 +5,9 @@
 import torch
 
 from torch import nn, Tensor
+from copy import deepcopy
 from collections import defaultdict
-from typing import NamedTuple, Dict, Sequence, Optional
+from typing import NamedTuple, Dict, Sequence
 
 from ..modules import IndexedModel
 
@@ -40,27 +41,51 @@ def get_permuted_param(model: IndexedModel, permutation_spec: PermutationSpec,
     for axis, p in enumerate(permutation_spec.axes2perm[key]):
         if p is None or axis == except_axis:
             continue
-        if permutations[p].dim() == 1:
-            weight = torch.index_select(weight, axis, permutations[p])
+        p = permutations[p]
+        # if p.shape[0] < weight.shape[axis]:
+        #     if weight.shape[axis] % p.shape[0] == 0:
+        #         multiplier = weight.shape[axis] // p.shape[0]
+        #         if p.dim() == 1:
+        #             p = torch.tensor([
+        #                 start_index + i
+        #                 for start_index in p * multiplier
+        #                 for i in range(multiplier)
+        #             ]).to(p.device)
+        #         else:
+        #             p = torch.cat([
+        #                 torch.cat([
+        #                     (torch.diag(torch.arange(multiplier, dtype=p.dtype))
+        #                      if elem else torch.zeros(multiplier, multiplier, dtype=p.dtype))
+        #                     for elem in row], dim=1)
+        #                 for row in p], dim=0).to(p.device)
+        #     else:
+        #         raise ValueError(
+        #             "permutation of shape",
+        #             p.shape,
+        #             "cannot be applied to weight of shape",
+        #             weight.shape
+        #         )
+        if p.dim() == 1:
+            weight = torch.index_select(weight, axis, p)
         else:
             weight = torch.movedim(
-                torch.movedim(weight, axis, -1) @ permutations[p].T,
+                torch.movedim(weight, axis, -1) @ p.T,
                 -1, axis
             )
     return weight
 
 
 def apply_permutation(model: IndexedModel, permutation_spec: PermutationSpec,
-                      permutations: Sequence, out: Optional[IndexedModel] = None):
-    remove_requires_grad = False
-    if out is None:
+                      permutations: Sequence, copy: bool = False) -> IndexedModel:
+    if copy:
+        out = deepcopy(model)
+    else:
         out = model
-        remove_requires_grad = True
 
     for key in permutation_spec.axes2perm:
-        if remove_requires_grad:
-            out[key].requires_grad = False
+        out[key].requires_grad = False
         out[key].copy_(get_permuted_param(model, permutation_spec, permutations, key))
+    return out
 
 
 def apply_permutation_stats(model: IndexedModel, permutation_spec: PermutationSpec,

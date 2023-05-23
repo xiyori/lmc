@@ -1,11 +1,10 @@
 from torch import nn
-from copy import deepcopy
 
 
 def interpolate(model0: nn.Module, model1: nn.Module,
                 alpha: float = 0.5, copy: bool = True) -> nn.Module:
     if copy:
-        interpolated = deepcopy(model0)
+        interpolated = model0.copy()
         for w0, w1, w_i in zip(model0.state_dict().values(),
                                model1.state_dict().values(),
                                interpolated.state_dict().values()):

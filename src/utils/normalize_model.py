@@ -13,12 +13,15 @@ def normalize_model(model: IndexedModel) -> nn.Module:
     normalized_model = deepcopy(model)
     for module in normalized_model.modules.values():
         operator_name = module.operator.__class__.__name__.lower()
-        if "linear" in operator_name or "conv2d" in operator_name:
+        if "conv2d" in operator_name:
             dims_to_norm = list(range(1, module.operator.weight.dim()))
             norm = simple_norm(module.operator.weight.detach(), dim=dims_to_norm, keepdim=True)
 
             weight = module.operator.weight.detach()
-            bias = module.operator.bias.detach()
             module.operator.weight.data = weight / norm
-            module.operator.bias.data = bias / norm.squeeze()
+            try:
+                bias = module.operator.bias.detach()
+                module.operator.bias.data = bias / norm.squeeze()
+            except AttributeError:
+                pass
     return normalized_model

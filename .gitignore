@@ -1,7 +1,7 @@
 .idea
 *.iml
 .ipynb_checkpoints
-checkpoints
+/resources
 /data
 /lock
 /output
